@@ -15,6 +15,9 @@ class ChatProtocol(basic.LineReceiver):
         """
         self.factory = factory
         self.client_id = id(self)  # Assign a unique client ID to each client
+        
+    def get_id(self):
+        return self.client_id
 
     def connectionMade(self):
         """
@@ -104,11 +107,19 @@ class ChatConsoleProtocol(protocol.Protocol):
     Protocol for handling command inputs from the console.
     """
 
-    def __init__(self, factory):
+    def __init__(self, factory, chat_protocol):
+        """
+        Initialize the ChatConsoleProtocol with a reference to the factory and ChatProtocol instance.
+
+        Args:
+            factory (ChatFactory): The factory creating this protocol instance.
+            chat_protocol (ChatProtocol): The instance of ChatProtocol associated with the client.
+        """
         self.factory = factory
+        self.chat_protocol = chat_protocol  # Store reference to ChatProtocol instance
         self.sending_message = False
         self.pending_client_id = None
-
+    
     def connectionMade(self):
         self.transport.write(b">>> ")  # Write prompt symbol when connection is made
 
@@ -129,6 +140,8 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
             self.prepareMessage(command)
+        elif command.startswith("/get_id"):
+            self.showClientId()
         else:
             print("Unknown command. Type '/exit' to stop the server.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
@@ -178,6 +191,13 @@ class ChatConsoleProtocol(protocol.Protocol):
         else:
             print("Invalid command usage. Use /connect <ip> <port>")
 
+    def showClientId(self):
+        """
+        Show the client ID.
+        """
+        client_id = self.chat_protocol.get_id()
+        print(f"Your client ID is: {client_id}")
+
     def sendToClient(self, client_id, message):
         """
         Send a message to a specific client.
@@ -191,7 +211,6 @@ class ChatConsoleProtocol(protocol.Protocol):
                 client.sendLine(message.encode('utf-8'))
                 return
         print(f"Client with ID {client_id} not found.")
-
 
 class ChatClientProtocol(protocol.Protocol):
     """
