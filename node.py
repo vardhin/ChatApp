@@ -106,6 +106,8 @@ class ChatConsoleProtocol(protocol.Protocol):
 
     def __init__(self, factory):
         self.factory = factory
+        self.sending_message = False
+        self.pending_client_id = None
 
     def connectionMade(self):
         self.transport.write(b">>> ")  # Write prompt symbol when connection is made
@@ -119,17 +121,46 @@ class ChatConsoleProtocol(protocol.Protocol):
             data (bytes): The data received from the console.
         """
         command = data.strip().decode("utf-8")  # Decode bytes to string and remove leading/trailing whitespace
-        if command.startswith("/connect"):
+        if self.sending_message:
+            self.handleMessageInput(command)
+        elif command.startswith("/connect"):
             self.connectToServer(command)
         elif command == "/exit":
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
-            client_id = int(input("Enter client Id: "))
-            message = input("Text: ")
-            self.sendToClient(client_id, message)
+            self.prepareMessage(command)
         else:
             print("Unknown command. Type '/exit' to stop the server.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
+
+    def prepareMessage(self, command):
+        """
+        Prepare to send a message.
+
+        Args:
+            command (str): The command entered by the user.
+        """
+        parts = command.split(" ", 2)
+        if len(parts) == 3:
+            self.pending_client_id = int(parts[1])
+            self.sending_message = True
+            print("Enter message:")
+        else:
+            print("Invalid command usage. Use /send <client_id> <message>")
+
+    def handleMessageInput(self, message):
+        """
+        Handle input for the message content.
+
+        Args:
+            message (str): The message entered by the user.
+        """
+        if self.pending_client_id is not None:
+            self.sendToClient(self.pending_client_id, message)
+            self.pending_client_id = None
+            self.sending_message = False
+        else:
+            print("Error: No pending client ID")
 
     def connectToServer(self, command):
         """
@@ -146,6 +177,21 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.connectTCP(ip, port, ChatClientFactory())
         else:
             print("Invalid command usage. Use /connect <ip> <port>")
+
+    def sendToClient(self, client_id, message):
+        """
+        Send a message to a specific client.
+
+        Args:
+            client_id (int): The ID of the client to send the message to.
+            message (str): The message to send.
+        """
+        for client in self.factory.clients:
+            if client.client_id == client_id:
+                client.sendLine(message.encode('utf-8'))
+                return
+        print(f"Client with ID {client_id} not found.")
+
 
 class ChatClientProtocol(protocol.Protocol):
     """
