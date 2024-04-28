@@ -143,8 +143,11 @@ class ChatConsoleProtocol(protocol.Protocol):
         if len(parts) == 3:
             ip = parts[1]
             port = int(parts[2])
-            print(f"Connecting to {ip}:{port}...")
-            reactor.connectTCP(ip, port, ChatClientFactory())
+            if ip == self.factory.server_ip and port == self.factory.server_port:
+                print("Cannot connect to own server.")
+            else:
+                print(f"Connecting to {ip}:{port}...")
+                reactor.connectTCP(ip, port, ChatClientFactory())
         else:
             print("Invalid command usage. Use /connect <ip> <port>")
 
@@ -155,15 +158,30 @@ class ChatClientProtocol(protocol.Protocol):
 
     def connectionMade(self):
         print("Connected to server")
+        self.send_message()
 
     def dataReceived(self, data):
         """
         Called when data is received from the server.
         """
         print(f"Received message: {data.decode('utf-8')}")
+        self.send_message()
 
     def connectionLost(self, reason):
         print("Connection lost")
+    
+    def send_message(self):
+        message = input(">>> ")
+        if message:
+            self.transport.write(message.encode('utf-8'))
+            if message.strip() == "/exit":
+                reactor.stop()  # Stop the client
+            elif message.strip() == "/disconnect":
+                self.transport.loseConnection()
+            elif message.strip() == "/connect":
+                self.connect()
+            else:
+                reactor.callLater(0.1, self.send_message)  # Schedule sending next message
 
 class ChatClientFactory(protocol.ClientFactory):
     """
