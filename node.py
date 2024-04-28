@@ -124,17 +124,9 @@ class ChatConsoleProtocol(protocol.Protocol):
         elif command == "/exit":
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
-            parts = command.split(" ", 2)
-            if len(parts) == 3:
-                client_ID = int(parts[1])
-                Message = parts[2]
-                for client in self.factory.clients:
-                    if client.client_id == client_ID:
-                        client.sendLine(Message.encode('utf-8'))
-                        return
-                print(f"Client with ID {client_ID} not found.")
-            else:
-                print("Invalid command usage. Use /send <client_id> <message>")
+            client_id = int(input("Enter client Id: "))
+            message = input("Text: ")
+            self.sendToClient(client_id, message)
         else:
             print("Unknown command. Type '/exit' to stop the server.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
