@@ -14,23 +14,25 @@ class ChatProtocol(basic.LineReceiver):
             factory (ChatFactory): The factory creating this protocol instance.
         """
         self.factory = factory
+        self.client_id = id(self)  # Assign a unique client ID to each client
 
     def connectionMade(self):
         """
         Called when a new client connection is established.
-        Prints client and server information and adds the client to the list of connected clients.
+        Prints client and server information, assigns a client ID, and adds the client to the list of connected clients.
         """
         peer = self.transport.getPeer()
-        print(f"Client connected from {peer.host}:{peer.port}")
+        print(f"Client connected from {peer.host}:{peer.port} (ID: {self.client_id})")
         print(f"Server running on {self.factory.server_ip}:{self.factory.server_port}")
         self.factory.clients.append(self)
+        self.sendLine(f"Welcome! Your client ID is {self.client_id}".encode('utf-8'))
 
     def connectionLost(self, reason):
         """
         Called when a client disconnects from the server.
         Prints a message indicating client disconnection and removes the client from the list of connected clients.
         """
-        print("Client disconnected")
+        print(f"Client disconnected (ID: {self.client_id})")
         self.factory.clients.remove(self)
 
     def lineReceived(self, line):
@@ -67,7 +69,7 @@ class ChatProtocol(basic.LineReceiver):
             message (str): The message to send.
         """
         for client in self.factory.clients:
-            if id(client) == client_id:
+            if client.client_id == client_id:
                 client.sendLine(message.encode('utf-8'))
                 return
         self.sendLine(f"Client with ID {client_id} not found.".encode('utf-8'))
@@ -133,7 +135,7 @@ def main():
     Entry point of the program.
     Prompts the user to enter the port number and starts the chat server on that port.
     """
-    server_ip = '127.0.0.1'  # Change this to your server's IP address
+    server_ip = input("Enter server IP: ")  # Change this to your server's IP address
     server_port = int(input("Enter the port number: "))  # Prompt the user to enter the port number
 
     factory = ChatFactory(server_ip, server_port)
