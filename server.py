@@ -1,40 +1,148 @@
-from twisted.internet import reactor, protocol
+from twisted.internet import reactor, protocol, stdio
 from twisted.protocols import basic
 
 class ChatProtocol(basic.LineReceiver):
+    """
+    Protocol for handling communication between the server and clients.
+    """
+
     def __init__(self, factory):
+        """
+        Initialize the protocol with a reference to its factory.
+
+        Args:
+            factory (ChatFactory): The factory creating this protocol instance.
+        """
         self.factory = factory
 
     def connectionMade(self):
+        """
+        Called when a new client connection is established.
+        Prints client and server information and adds the client to the list of connected clients.
+        """
         peer = self.transport.getPeer()
         print(f"Client connected from {peer.host}:{peer.port}")
         print(f"Server running on {self.factory.server_ip}:{self.factory.server_port}")
         self.factory.clients.append(self)
 
     def connectionLost(self, reason):
+        """
+        Called when a client disconnects from the server.
+        Prints a message indicating client disconnection and removes the client from the list of connected clients.
+        """
         print("Client disconnected")
         self.factory.clients.remove(self)
 
     def lineReceived(self, line):
-        print(f"Received message: {line}")
+        """
+        Called when a line of data is received from a client.
+        Prints the received message and broadcasts it to all other connected clients.
+        """
+        line = line.decode('utf-8')  # Decode bytes to string
+        if line.startswith("/disconnect"):
+            self.transport.loseConnection()  # Disconnect the client
+        elif line.startswith("/exit"):
+            reactor.stop()  # Stop the server
+        elif line.startswith("/send"):
+            # Format: /send <client_id> <message>
+            parts = line.split(" ", 2)
+            if len(parts) == 3:
+                client_id = int(parts[1])
+                message = parts[2]
+                self.sendToClient(client_id, message)
+            else:
+                self.sendLine("Invalid command usage. Use /send <client_id> <message>")
+        else:
+            print(f"Received message: {line}")
+            for client in self.factory.clients:
+                if client != self:
+                    client.sendLine(line.encode('utf-8'))
+
+    def sendToClient(self, client_id, message):
+        """
+        Send a message to a specific client.
+
+        Args:
+            client_id (int): The ID of the client to send the message to.
+            message (str): The message to send.
+        """
         for client in self.factory.clients:
-            if client != self:
-                client.sendLine(line.encode('utf-8'))
+            if id(client) == client_id:
+                client.sendLine(message.encode('utf-8'))
+                return
+        self.sendLine(f"Client with ID {client_id} not found.".encode('utf-8'))
 
 class ChatFactory(protocol.Factory):
+    """
+    Factory for creating instances of the ChatProtocol class.
+    """
+
     def __init__(self, server_ip, server_port):
+        """
+        Initialize the factory with an empty list of clients and server IP and port.
+
+        Args:
+            server_ip (str): The IP address of the server.
+            server_port (int): The port number of the server.
+        """
         self.clients = []
         self.server_ip = server_ip
         self.server_port = server_port
 
     def buildProtocol(self, addr):
+        """
+        Called when a new connection is made to the server.
+        Creates and returns a new instance of the ChatProtocol class.
+
+        Args:
+            addr: The address of the connecting client.
+
+        Returns:
+            ChatProtocol: A new instance of the ChatProtocol class.
+        """
         return ChatProtocol(self)
 
+class ChatConsoleProtocol(protocol.Protocol):
+    """
+    Protocol for handling command inputs from the console.
+    """
+
+    def __init__(self, factory):
+        self.factory = factory
+
+    def connectionMade(self):
+        self.transport.write(b">>> ")  # Write prompt symbol when connection is made
+
+    def dataReceived(self, data):
+        """
+        Called when data is received from the console.
+        Parses the command and executes it.
+
+        Args:
+            data (bytes): The data received from the console.
+        """
+        command = data.strip().decode("utf-8")  # Decode bytes to string and remove leading/trailing whitespace
+        if command == "/exit":
+            reactor.stop()  # Stop the server
+        else:
+            print("Unknown command. Type '/exit' to stop the server.")
+        self.transport.write(b">>> ")  # Write prompt symbol again after handling command
+
 def main():
+    """
+    Entry point of the program.
+    Prompts the user to enter the port number and starts the chat server on that port.
+    """
     server_ip = '127.0.0.1'  # Change this to your server's IP address
-    server_port = 9999
-    reactor.listenTCP(server_port, ChatFactory(server_ip, server_port))
+    server_port = int(input("Enter the port number: "))  # Prompt the user to enter the port number
+
+    factory = ChatFactory(server_ip, server_port)
+    reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
+
+    # Start the command interface
+    stdio.StandardIO(ChatConsoleProtocol(factory))
+
     reactor.run()
 
 if __name__ == "__main__":
