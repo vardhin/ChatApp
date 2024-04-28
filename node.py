@@ -46,14 +46,9 @@ class ChatProtocol(basic.LineReceiver):
         elif line.startswith("/exit"):
             reactor.stop()  # Stop the server
         elif line.startswith("/send"):
-            # Format: /send <client_id> <message>
-            parts = line.split(" ", 2)
-            if len(parts) == 3:
-                client_id = int(parts[1])
-                message = parts[2]
-                self.sendToClient(client_id, message)
-            else:
-                self.sendLine("Invalid command usage. Use /send <client_id> <message>")
+            client_id = int(input("Enter client Id: "))
+            message = input("Text: ")
+            self.sendToClient(client_id, message)
         else:
             print(f"Received message: {line}")
             for client in self.factory.clients:
