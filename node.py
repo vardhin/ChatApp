@@ -214,8 +214,7 @@ def main():
     print(f"Chat server started on {server_ip}:{server_port}")
 
     # Start the command interface
-    chat_protocol = ChatProtocol(factory)  # Create an instance of ChatProtocol
-    stdio.StandardIO(ChatConsoleProtocol(factory, chat_protocol))  # Pass both factory and chat_protocol instances
+    stdio.StandardIO(ChatConsoleProtocol(factory))  # Pass only the factory instance
 
     reactor.run()
 
