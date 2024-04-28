@@ -164,7 +164,11 @@ class ChatConsoleProtocol(protocol.Protocol):
             ip (str): The IP address of the client to send the message to.
             message (str): The message to send.
         """
-        self.factory.sendLine(f"/send {ip} {message}".encode('utf-8'))
+        for client in self.factory.clients:
+            if client.transport.getPeer().host == ip:
+                client.sendLine(message.encode('utf-8'))
+                return
+        print(f"Client with IP {ip} not found.")
 
     def connectToServer(self, command):
         """
@@ -189,7 +193,8 @@ class ChatConsoleProtocol(protocol.Protocol):
         Args:
             message (str): The message to send.
         """
-        self.factory.sendLine(message.encode('utf-8'))
+        for client in self.factory.clients:
+            client.sendLine(message.encode('utf-8'))
 
 class ChatClientProtocol(protocol.Protocol):
     """
