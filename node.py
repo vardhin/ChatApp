@@ -136,8 +136,6 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
             self.prepareMessage(command)
-        elif command.startswith("/connect"):
-            self.connectToServer(command)
         else:
             self.sendMessage(command)  # Treat any other input as a message to send to the server
 
@@ -148,43 +146,22 @@ class ChatConsoleProtocol(protocol.Protocol):
         Args:
             command (str): The command entered by the user.
         """
-        parts = command.split(" ", 2)
-        if len(parts) == 3:
-            ip = parts[1]
-            message = parts[2]
-            self.sendMessageToServer(ip, message)
+        parts = command.split(" ", 1)
+        if len(parts) == 2:
+            message = parts[1]
+            self.sendMessageToServer(message)
         else:
-            print("Invalid command usage. Use /send <ip> <message>")
+            print("Invalid command usage. Use /send <message>")
 
-    def sendMessageToServer(self, ip, message):
+    def sendMessageToServer(self, message):
         """
         Send a message to the server.
 
         Args:
-            ip (str): The IP address of the client to send the message to.
             message (str): The message to send.
         """
         for client in self.factory.clients:
-            if client.transport.getPeer().host == ip:
-                client.sendLine(message.encode('utf-8'))
-                return
-        print(f"Client with IP {ip} not found.")
-
-    def connectToServer(self, command):
-        """
-        Connect to another server.
-
-        Args:
-            command (str): The command entered by the user.
-        """
-        parts = command.split(" ", 2)
-        if len(parts) == 3:
-            ip = parts[1]
-            port = int(parts[2])
-            print(f"Connecting to {ip}:{port}...")
-            reactor.connectTCP(ip, port, ChatClientFactory())  # Connect to the specified IP and port
-        else:
-            print("Invalid command usage. Use /connect <ip> <port>")
+            client.sendLine(message.encode('utf-8'))
 
     def sendMessage(self, message):
         """
