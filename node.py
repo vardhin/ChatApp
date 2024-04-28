@@ -15,6 +15,9 @@ class ChatProtocol(basic.LineReceiver):
         """
         self.factory = factory
         self.client_id = id(self)  # Assign a unique client ID to each client
+        
+    def get_id(self):
+        return self.client_id
 
     def connectionMade(self):
         """
@@ -46,17 +49,14 @@ class ChatProtocol(basic.LineReceiver):
         elif line.startswith("/exit"):
             reactor.stop()  # Stop the server
         elif line.startswith("/send"):
-            parts = line.split(" ", 2)
-            if len(parts) == 3:
-                client_id = int(parts[1])
-                message = parts[2]
-                self.sendToClient(client_id, f"{self.client_id}: {message}")
-            else:
-                self.sendLine("Invalid command usage. Use /send <client_id> <message>".encode('utf-8'))
+            client_id = int(input("Enter client Id: "))
+            message = input("Text: ")
+            self.sendToClient(client_id, message)
         else:
             print(f"Received message: {line}")
             for client in self.factory.clients:
-                client.sendLine(f"{self.client_id}: {line}".encode('utf-8'))
+                if client != self:
+                    client.sendLine(line.encode('utf-8'))
 
     def sendToClient(self, client_id, message):
         """
@@ -107,11 +107,19 @@ class ChatConsoleProtocol(protocol.Protocol):
     Protocol for handling command inputs from the console.
     """
 
-    def __init__(self, factory):
+    def __init__(self, factory, chat_protocol):
+        """
+        Initialize the ChatConsoleProtocol with a reference to the factory and ChatProtocol instance.
+
+        Args:
+            factory (ChatFactory): The factory creating this protocol instance.
+            chat_protocol (ChatProtocol): The instance of ChatProtocol associated with the client.
+        """
         self.factory = factory
+        self.chat_protocol = chat_protocol  # Store reference to ChatProtocol instance
         self.sending_message = False
         self.pending_client_id = None
-
+    
     def connectionMade(self):
         self.transport.write(b">>> ")  # Write prompt symbol when connection is made
 
@@ -132,6 +140,8 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
             self.prepareMessage(command)
+        elif command.startswith("/get_id"):
+            self.showClientId()
         else:
             print("Unknown command. Type '/exit' to stop the server.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
@@ -180,6 +190,13 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.connectTCP(ip, port, ChatClientFactory())
         else:
             print("Invalid command usage. Use /connect <ip> <port>")
+
+    def showClientId(self):
+        """
+        Show the client ID.
+        """
+        client_id = self.chat_protocol.get_id()
+        print(f"Your client ID is: {client_id}")
 
     def sendToClient(self, client_id, message):
         """
@@ -243,7 +260,8 @@ def main():
     print(f"Chat server started on {server_ip}:{server_port}")
 
     # Start the command interface
-    stdio.StandardIO(ChatConsoleProtocol(factory))
+    chat_protocol = ChatProtocol(factory)  # Create an instance of ChatProtocol
+    stdio.StandardIO(ChatConsoleProtocol(factory, chat_protocol))  # Pass both factory and chat_protocol instances
 
     reactor.run()
 
