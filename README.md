@@ -1,1 +1,1 @@
-Rishi Has joined the project
+RisHi has joined the project
