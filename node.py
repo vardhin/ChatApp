@@ -49,32 +49,28 @@ class ChatProtocol(basic.LineReceiver):
         elif line.startswith("/exit"):
             reactor.stop()  # Stop the server
         elif line.startswith("/send"):
-            parts = line.split(" ", 2)
-            if len(parts) == 3:
-                ip = parts[1]
-                message = parts[2]
-                self.sendToClientByIP(ip, message)
-            else:
-                self.sendLine("Invalid command usage. Use /send <ip> <message>".encode('utf-8'))
+            client_id = int(input("Enter client Id: "))
+            message = input("Text: ")
+            self.sendToClient(client_id, message)
         else:
             print(f"Received message: {line}")
             for client in self.factory.clients:
                 if client != self:
                     client.sendLine(line.encode('utf-8'))
 
-    def sendToClientByIP(self, ip, message):
+    def sendToClient(self, client_id, message):
         """
-        Send a message to a specific client by their IP address.
+        Send a message to a specific client.
 
         Args:
-            ip (str): The IP address of the client to send the message to.
+            client_id (int): The ID of the client to send the message to.
             message (str): The message to send.
         """
         for client in self.factory.clients:
-            if client.transport.getPeer().host == ip:
+            if client.client_id == client_id:
                 client.sendLine(message.encode('utf-8'))
                 return
-        self.sendLine(f"Client with IP {ip} not found.".encode('utf-8'))
+        self.sendLine(f"Client with ID {client_id} not found.".encode('utf-8'))
 
 class ChatFactory(protocol.Factory):
     """
@@ -119,6 +115,7 @@ class ChatConsoleProtocol(protocol.Protocol):
             factory (ChatFactory): The factory creating this protocol instance.
         """
         self.factory = factory
+        self.connected_ips = set()  # Store connected IPs to avoid duplicate connections
     
     def connectionMade(self):
         self.transport.write(b">>> ")  # Write prompt symbol when connection is made
@@ -136,8 +133,11 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
             self.prepareMessage(command)
+        elif command.startswith("/connect"):
+            self.connectToServer(command)
         else:
-            self.sendMessage(command)  # Treat any other input as a message to send to the server
+            print("Unknown command. Type '/exit' to stop the server.")
+        self.transport.write(b">>> ")  # Write prompt symbol again after handling command
 
     def prepareMessage(self, command):
         """
@@ -146,32 +146,48 @@ class ChatConsoleProtocol(protocol.Protocol):
         Args:
             command (str): The command entered by the user.
         """
-        parts = command.split(" ", 1)
-        if len(parts) == 2:
-            message = parts[1]
-            self.sendMessageToServer(message)
+        parts = command.split(" ", 2)
+        if len(parts) == 3:
+            ip = parts[1]
+            message = parts[2]
+            self.sendMessage(ip, message)
         else:
-            print("Invalid command usage. Use /send <message>")
+            print("Invalid command usage. Use /send <ip> <message>")
 
-    def sendMessageToServer(self, message):
+    def sendMessage(self, ip, message):
         """
-        Send a message to the server.
+        Send a message to a specific IP address.
 
         Args:
+            ip (str): The IP address of the client to send the message to.
             message (str): The message to send.
         """
         for client in self.factory.clients:
-            client.sendLine(message.encode('utf-8'))
+            if client.transport.getPeer().host == ip:
+                client.sendLine(message.encode('utf-8'))
+                return
+        print(f"Client with IP {ip} not found.")
 
-    def sendMessage(self, message):
+    def connectToServer(self, command):
         """
-        Send a message to the server.
+        Connect to another server.
 
         Args:
-            message (str): The message to send.
+            command (str): The command entered by the user.
         """
-        for client in self.factory.clients:
-            client.sendLine(message.encode('utf-8'))
+        parts = command.split(" ", 2)
+        if len(parts) == 3:
+            ip = parts[1]
+            port = int(parts[2])
+            if ip not in self.connected_ips:
+                self.connected_ips.add(ip)
+                print(f"Connecting to {ip}:{port}...")
+                reactor.connectTCP(ip, port, ChatClientFactory())
+            else:
+                print("Already connected to this server.")
+        else:
+            print("Invalid command usage. Use /connect <ip> <port>")
+
 
 class ChatClientProtocol(protocol.Protocol):
     """
@@ -221,7 +237,7 @@ def main():
     print(f"Chat server started on {server_ip}:{server_port}")
 
     # Start the command interface
-    stdio.StandardIO(ChatConsoleProtocol(factory))
+    stdio.StandardIO(ChatConsoleProtocol(factory))  # Pass only the factory instance
 
     reactor.run()
 
