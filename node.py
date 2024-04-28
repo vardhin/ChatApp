@@ -115,6 +115,7 @@ class ChatConsoleProtocol(protocol.Protocol):
             factory (ChatFactory): The factory creating this protocol instance.
         """
         self.factory = factory
+        self.connected_ips = set()  # Store connected IPs to avoid duplicate connections
     
     def connectionMade(self):
         self.transport.write(b">>> ")  # Write prompt symbol when connection is made
@@ -132,6 +133,8 @@ class ChatConsoleProtocol(protocol.Protocol):
             reactor.stop()  # Stop the server
         elif command.startswith("/send"):
             self.prepareMessage(command)
+        elif command.startswith("/connect"):
+            self.connectToServer(command)
         else:
             print("Unknown command. Type '/exit' to stop the server.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
@@ -164,6 +167,26 @@ class ChatConsoleProtocol(protocol.Protocol):
                 client.sendLine(message.encode('utf-8'))
                 return
         print(f"Client with IP {ip} not found.")
+
+    def connectToServer(self, command):
+        """
+        Connect to another server.
+
+        Args:
+            command (str): The command entered by the user.
+        """
+        parts = command.split(" ", 2)
+        if len(parts) == 3:
+            ip = parts[1]
+            port = int(parts[2])
+            if ip not in self.connected_ips:
+                self.connected_ips.add(ip)
+                print(f"Connecting to {ip}:{port}...")
+                reactor.connectTCP(ip, port, ChatClientFactory())
+            else:
+                print("Already connected to this server.")
+        else:
+            print("Invalid command usage. Use /connect <ip> <port>")
 
 
 class ChatClientProtocol(protocol.Protocol):
