@@ -45,13 +45,17 @@ class ChatProtocol(basic.LineReceiver):
         """
         line = line.decode('utf-8')  # Decode bytes to string
         if line.startswith("/disconnect"):
-            self.transport.loseConnection()  # Disconnect the client
+            self.disconnectClient()
         elif line.startswith("/exit"):
             reactor.stop()  # Stop the server
         elif line.startswith("/send"):
             client_id = int(input("Enter client Id: "))
             message = input("Text: ")
             self.sendToClient(client_id, message)
+        elif line.startswith("/help"):
+            self.showHelp()
+        elif line.startswith("/broadcast"):
+            self.broadcastMessage(line)
         else:
             print(f"Received message: {line}")
             for client in self.factory.clients:
@@ -71,6 +75,35 @@ class ChatProtocol(basic.LineReceiver):
                 client.sendLine(message.encode('utf-8'))
                 return
         self.sendLine(f"Client with ID {client_id} not found.".encode('utf-8'))
+
+    def showHelp(self):
+        """
+        Show a list of all available commands to the user.
+        """
+        help_message = "Available commands:\n"
+        help_message += "/disconnect: Disconnect from the server\n"
+        help_message += "/exit: Stop the server\n"
+        help_message += "/send <client_id>: Send a message to a specific client\n"
+        help_message += "/broadcast <message>: Send a message to all connected clients\n"
+        help_message += "/help: Show this help message\n"
+        self.sendLine(help_message.encode('utf-8'))
+
+    def broadcastMessage(self, line):
+        """
+        Broadcast a message to all connected clients.
+
+        Args:
+            line (str): The command line containing the /broadcast command and message.
+        """
+        message = line[len("/broadcast"):].strip()  # Extract the message from the command
+        for client in self.factory.clients:
+            client.sendLine(message.encode('utf-8'))
+    
+    def disconnectClient(self):
+        """
+        Disconnect the client from the server.
+        """
+        self.transport.loseConnection()
 
 class ChatFactory(protocol.Factory):
     """
@@ -135,8 +168,12 @@ class ChatConsoleProtocol(protocol.Protocol):
             self.prepareMessage(command)
         elif command.startswith("/connect"):
             self.connectToServer(command)
+        elif command.startswith("/help"):
+            self.showLocalHelp()
+        elif command.startswith("/disconnect"):
+            self.disconnectServer()
         else:
-            print("Unknown command. Type '/exit' to stop the server.")
+            print("Unknown command. Type '/help' to see the list of valid commands.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
 
     def prepareMessage(self, command):
@@ -188,6 +225,24 @@ class ChatConsoleProtocol(protocol.Protocol):
         else:
             print("Invalid command usage. Use /connect <ip> <port>")
 
+    def showLocalHelp(self):
+        """
+        Show a list of commands available in the local console.
+        """
+        help_message = "Local commands:\n"
+        help_message += "/exit: Stop the server\n"
+        help_message += "/send <ip> <message>: Send a message to a specific IP\n"
+        help_message += "/connect <ip> <port>: Connect to another server\n"
+        help_message += "/help: Show this help message\n"
+        help_message += "/broadcast <message>: Send a message to all connected clients\n"
+        help_message += "/disconnect: Disconnect from the server\n"
+        print(help_message)
+    
+    def disconnectServer(self):
+        """
+        Disconnect from the server.
+        """
+        reactor.stop()
 
 class ChatClientProtocol(protocol.Protocol):
     """
