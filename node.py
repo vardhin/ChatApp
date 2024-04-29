@@ -12,7 +12,7 @@ class ChatProtocol(basic.LineReceiver):
         self.factory.clients[peer.host] = self
         self.sendLine(b"Welcome to the chat server!")
 
-    def connectionLost(self):
+    def connectionLost(self, reason):
         peer = self.transport.getPeer()
         print(f"Client disconnected from {peer.host}:{peer.port}")
         del self.factory.clients[peer.host]
@@ -33,7 +33,7 @@ class ChatProtocol(basic.LineReceiver):
             self.connectToServer(line)
         else:
             print(f"Received message: {line}")
-            self.broadcast(line.encode('utf-8'))
+            self.broadcast(line)
 
     def sendToClient(self, line):
         parts = line.split(" ", 2)
@@ -49,12 +49,12 @@ class ChatProtocol(basic.LineReceiver):
 
     def showHelp(self):
         help_message = """Available commands:
-                        /disconnect: Disconnect from the server
-                        /exit: Stop the server
-                        /send <IP>: Send a message to a specific client
-                        /broadcast <message>: Send a message to all connected clients
-                        /help: Show this help message
-                        /connect <IP> <port>: Connect to a server"""
+/disconnect: Disconnect from the server
+/exit: Stop the server
+/send <IP>: Send a message to a specific client
+/broadcast <message>: Send a message to all connected clients
+/help: Show this help message
+/connect <IP> <port>: Connect to a server"""
         self.sendLine(help_message.encode('utf-8'))
 
     def broadcastMessage(self, line):
@@ -62,9 +62,10 @@ class ChatProtocol(basic.LineReceiver):
         self.broadcast(message.encode('utf-8'))
 
     def broadcast(self, message):
+        message_str = message.decode('utf-8')  # Convert bytes to string
         for client in self.factory.clients.values():
-            client.sendLine(message)
-    
+            client.sendLine(message_str.encode('utf-8'))  # Send the string message
+
     def disconnectClient(self):
         self.transport.loseConnection()
 
@@ -82,7 +83,7 @@ class ChatFactory(protocol.Factory):
         self.server_ip = server_ip
         self.server_port = server_port
 
-    def buildProtocol(self):
+    def buildProtocol(self, addr):
         return ChatProtocol(self)
 
 class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
@@ -124,14 +125,14 @@ class ChatClientProtocol(protocol.Protocol):
     def dataReceived(self, data):
         print(f"Received message: {data.decode('utf-8')}")
 
-    def connectionLost(self):
+    def connectionLost(self, reason):
         print("Connection lost")
 
 class ChatClientFactory(protocol.ClientFactory):
-    def buildProtocol(self):
+    def buildProtocol(self, addr):
         return ChatClientProtocol()
 
-    def clientConnectionFailed(self):
+    def clientConnectionFailed(self, connector, reason):
         print("Connection failed")
 
 def main():
