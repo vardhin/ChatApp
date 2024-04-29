@@ -12,7 +12,7 @@ class ChatProtocol(basic.LineReceiver):
         self.factory.clients[peer.host] = self
         self.sendLine(b"Welcome to the chat server!")
 
-    def connectionLost(self, reason):
+    def connectionLost(self):
         peer = self.transport.getPeer()
         print(f"Client disconnected from {peer.host}:{peer.port}")
         del self.factory.clients[peer.host]
@@ -49,12 +49,12 @@ class ChatProtocol(basic.LineReceiver):
 
     def showHelp(self):
         help_message = """Available commands:
-/disconnect: Disconnect from the server
-/exit: Stop the server
-/send <IP>: Send a message to a specific client
-/broadcast <message>: Send a message to all connected clients
-/help: Show this help message
-/connect <IP> <port>: Connect to a server"""
+                        /disconnect: Disconnect from the server
+                        /exit: Stop the server
+                        /send <IP>: Send a message to a specific client
+                        /broadcast <message>: Send a message to all connected clients
+                        /help: Show this help message
+                        /connect <IP> <port>: Connect to a server"""
         self.sendLine(help_message.encode('utf-8'))
 
     def broadcastMessage(self, line):
@@ -82,7 +82,7 @@ class ChatFactory(protocol.Factory):
         self.server_ip = server_ip
         self.server_port = server_port
 
-    def buildProtocol(self, addr):
+    def buildProtocol(self):
         return ChatProtocol(self)
 
 class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
@@ -124,14 +124,14 @@ class ChatClientProtocol(protocol.Protocol):
     def dataReceived(self, data):
         print(f"Received message: {data.decode('utf-8')}")
 
-    def connectionLost(self, reason):
+    def connectionLost(self):
         print("Connection lost")
 
 class ChatClientFactory(protocol.ClientFactory):
-    def buildProtocol(self, addr):
+    def buildProtocol(self):
         return ChatClientProtocol()
 
-    def clientConnectionFailed(self, connector, reason):
+    def clientConnectionFailed(self):
         print("Connection failed")
 
 def main():
