@@ -29,6 +29,8 @@ class ChatProtocol(basic.LineReceiver):
             self.broadcastMessage(line)
         elif line.startswith("/help"):
             self.showHelp()
+        elif line.startswith("/connect"):
+            self.connectToServer(line)
         else:
             print(f"Received message: {line}")
             self.broadcast(line.encode('utf-8'))
@@ -51,7 +53,8 @@ class ChatProtocol(basic.LineReceiver):
 /exit: Stop the server
 /send <IP>: Send a message to a specific client
 /broadcast <message>: Send a message to all connected clients
-/help: Show this help message"""
+/help: Show this help message
+/connect <IP> <port>: Connect to a server"""
         self.sendLine(help_message.encode('utf-8'))
 
     def broadcastMessage(self, line):
@@ -64,6 +67,14 @@ class ChatProtocol(basic.LineReceiver):
     
     def disconnectClient(self):
         self.transport.loseConnection()
+
+    def connectToServer(self, line):
+        parts = line.split(" ")
+        if len(parts) == 3:
+            ip, port = parts[1], int(parts[2])
+            reactor.connectTCP(ip, port, ChatClientFactory())
+        else:
+            self.sendLine("Invalid command usage. Use /connect <IP> <port>".encode('utf-8'))
 
 class ChatFactory(protocol.Factory):
     def __init__(self, server_ip, server_port):
@@ -88,6 +99,8 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
             super().showHelp()
         elif command.startswith("/broadcast"):
             self.broadcastMessage(command)
+        elif command.startswith("/connect"):
+            super().connectToServer(command)
         else:
             print("Unknown command. Type '/help' to see the list of valid commands.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
