@@ -59,7 +59,7 @@ class ChatProtocol(basic.LineReceiver):
 
     def broadcastMessage(self, line):
         message = line[len("/broadcast"):].strip()  # Extract the message from the command
-        self.broadcast(message)
+        self.broadcast(message.encode('utf-8'))
 
     def broadcast(self, message):
         for client in self.factory.clients.values():
