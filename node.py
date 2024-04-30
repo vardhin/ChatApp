@@ -12,7 +12,7 @@ class ChatProtocol(basic.LineReceiver):
         self.factory.clients[peer.host] = self
         self.sendLine(b"Welcome to the chat server!")
 
-    def connectionLost(self, reason):
+    def connectionLost(self):
         peer = self.transport.getPeer()
         print(f"Client disconnected from {peer.host}:{peer.port}")
         del self.factory.clients[peer.host]
@@ -49,22 +49,21 @@ class ChatProtocol(basic.LineReceiver):
 
     def showHelp(self):
         help_message = """Available commands:
-/disconnect: Disconnect from the server
-/exit: Stop the server
-/send <IP>: Send a message to a specific client
-/broadcast <message>: Send a message to all connected clients
-/help: Show this help message
-/connect <IP> <port>: Connect to a server"""
+                        /exit: Stop the server
+                        /send <IP>: Send a message to a specific client
+                        /broadcast <message>: Send a message to all connected clients
+                        /connect <IP> <port>: Connect to a server
+                        /help: Show this help message"""
         self.sendLine(help_message.encode('utf-8'))
 
     def broadcastMessage(self, line):
-        message = line[len("/broadcast"):].strip()  # Extract the message from the command
+        message = line[len("/broadcast"):].strip()
         self.broadcast(message.encode('utf-8'))
 
     def broadcast(self, message):
-        message_str = message.decode('utf-8')  # Convert bytes to string
+        message_str = message.decode('utf-8')
         for client in self.factory.clients.values():
-            client.sendLine(message_str.encode('utf-8'))  # Send the string message
+            client.sendLine(message_str.encode('utf-8'))
 
     def disconnectClient(self):
         self.transport.loseConnection()
@@ -83,17 +82,17 @@ class ChatFactory(protocol.Factory):
         self.server_ip = server_ip
         self.server_port = server_port
 
-    def buildProtocol(self, addr):
+    def buildProtocol(self):
         return ChatProtocol(self)
 
 class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
     def connectionMade(self):
-        self.transport.write(b">>> ")  # Write prompt symbol when connection is made
+        self.transport.write(b">>> ")
 
     def dataReceived(self, data):
-        command = data.strip().decode("utf-8")  # Decode bytes to string and remove leading/trailing whitespace
+        command = data.strip().decode("utf-8")
         if command == "/exit":
-            reactor.stop()  # Stop the server
+            reactor.stop()
         elif command.startswith("/send"):
             self.prepareMessage(command)
         elif command.startswith("/help"):
@@ -103,8 +102,8 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
         elif command.startswith("/connect"):
             super().connectToServer(command)
         else:
-            print("Unknown command. Type '/help' to see the list of valid commands.")
-        self.transport.write(b">>> ")  # Write prompt symbol again after handling command
+            print("Unknown command. Type '/help' to see all the valid commands.")
+        self.transport.write(b">>> ")
 
     def prepareMessage(self, command):
         parts = command.split(" ", 2)
@@ -125,19 +124,19 @@ class ChatClientProtocol(protocol.Protocol):
     def dataReceived(self, data):
         print(f"Received message: {data.decode('utf-8')}")
 
-    def connectionLost(self, reason):
+    def connectionLost(self):
         print("Connection lost")
 
 class ChatClientFactory(protocol.ClientFactory):
-    def buildProtocol(self, addr):
+    def buildProtocol(self):
         return ChatClientProtocol()
 
-    def clientConnectionFailed(self, connector, reason):
+    def clientConnectionFailed(self):
         print("Connection failed")
 
 def main():
-    server_ip = input("Enter server IP: ")  
-    server_port = int(input("Enter the port number (Use 9000 for testing): "))  
+    server_ip = input("Enter server IP: ")
+    server_port = int(input("Enter the port number (Use 9000 for testing): "))
 
     factory = ChatFactory(server_ip, server_port)
     reactor.listenTCP(server_port, factory)
