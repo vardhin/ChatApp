@@ -1,6 +1,5 @@
 from twisted.internet import reactor, protocol, stdio
 from twisted.protocols import basic
-import json
 
 class ChatProtocol(basic.LineReceiver):
     def __init__(self, factory):
@@ -50,13 +49,11 @@ class ChatProtocol(basic.LineReceiver):
 
     def showHelp(self):
         help_message = """Available commands:
-/disconnect: Disconnect from the server
-/exit: Stop the server
-/send <IP>: Send a message to a specific client
-/broadcast <message>: Send a message to all connected clients
-/help: Show this help message
-/connect <IP> <port>: Connect to a server
-/nick: Set a nickname for an IP address"""
+                        /exit: Stop the server
+                        /send <IP>: Send a message to a specific client
+                        /broadcast <message>: Send a message to all connected clients
+                        /help: Show this help message
+                        /connect <IP> <port>: Connect to a server"""
         self.sendLine(help_message.encode('utf-8'))
 
     def broadcastMessage(self, line):
@@ -80,11 +77,10 @@ class ChatProtocol(basic.LineReceiver):
             self.sendLine("Invalid command usage. Use /connect <IP> <port>".encode('utf-8'))
 
 class ChatFactory(protocol.Factory):
-    def __init__(self, server_ip, server_port, nicknames):
+    def __init__(self, server_ip, server_port):
         self.clients = {}
         self.server_ip = server_ip
         self.server_port = server_port
-        self.nicknames = nicknames
 
     def buildProtocol(self, addr):
         return ChatProtocol(self)
@@ -105,8 +101,6 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
             self.broadcastMessage(command)
         elif command.startswith("/connect"):
             super().connectToServer(command)
-        elif command.startswith("/nick"):
-            self.setNickName()
         else:
             print("Unknown command. Type '/help' to see the list of valid commands.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
@@ -122,17 +116,6 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
                 print(f"Client with IP {dest_ip} not found.")
         else:
             print("Invalid command usage. Use /send <IP> <message>")
-
-    def setNickName(self):
-        nickname = input("Enter your nickname: ")
-        ipaddress = input("Enter the IP address to nickname: ")
-
-        # Save the nickname and IP address into a JSON file
-        self.factory.nicknames[ipaddress] = nickname
-        with open('nicknames.json', 'w') as file:
-            json.dump(self.factory.nicknames, file)
-
-        print("Nickname set successfully!")
 
 class ChatClientProtocol(protocol.Protocol):
     def connectionMade(self):
@@ -152,21 +135,14 @@ class ChatClientFactory(protocol.ClientFactory):
         print("Connection failed")
 
 def main():
-    server_ip = input("Enter server IP: ")
-    server_port = int(input("Enter the port number (Use 9000 for testing): "))
+    server_ip = input("Enter server IP: ")  
+    server_port = int(input("Enter the port number (Use 9000 for testing): "))  
 
-    # Load existing nicknames from JSON file
-    try:
-        with open('nicknames.json', 'r') as file:
-            nicknames = json.load(file)
-    except FileNotFoundError:
-        nicknames = {}
-
-    factory = ChatFactory(server_ip, server_port, nicknames)
+    factory = ChatFactory(server_ip, server_port)
     reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
 
-    stdio.StandardIO(ChatConsoleProtocol(factory))
+    stdio.StandardIO(ChatConsoleProtocol(factory))  
 
     reactor.run()
 
