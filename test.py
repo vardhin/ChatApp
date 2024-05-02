@@ -178,9 +178,12 @@ class ChatClientFactory(protocol.ClientFactory):
     def clientConnectionFailed(self, connector, reason):
         print("Connection failed")
 
-class ChatClientProtocol(protocol.Protocol):
+class ChatClientProtocol(protocol.ClientFactory):
     def __init__(self, private_key):
         self.private_key = private_key
+
+    def buildProtocol(self, addr):
+        return self
 
     def connectionMade(self):
         print("Connected to server")
@@ -192,6 +195,7 @@ class ChatClientProtocol(protocol.Protocol):
 
     def connectionLost(self, reason):
         print("Connection lost")
+
 
 def main():
     server_ip = input("Enter server IP: ")
