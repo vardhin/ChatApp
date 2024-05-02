@@ -47,9 +47,10 @@ class ChatProtocol(basic.LineReceiver):
         self.sendLine(b"Welcome to the chat server!")
 
     def connectionLost(self, reason):
-        peer = self.transport.getPeer()
-        print(f"Client disconnected from {peer.host}:{peer.port}")
-        del self.factory.clients[peer.host]
+        if hasattr(self.transport.getPeer(), "host"):
+            peer = self.transport.getPeer()
+            print(f"Client disconnected from {peer.host}:{peer.port}")
+            del self.factory.clients[peer.host]
 
     def lineReceived(self, line):
         line = line.decode('utf-8')
@@ -110,7 +111,7 @@ class ChatProtocol(basic.LineReceiver):
         parts = line.split(" ")
         if len(parts) == 3:
             ip, port = parts[1], int(parts[2])
-            reactor.connectTCP(ip, port, ChatClientFactory())
+            reactor.connectTCP(ip, port, self.factory.getClientProtocol())
         else:
             self.sendLine("Invalid command usage. Use /connect <IP> <port>".encode('utf-8'))
 
@@ -125,6 +126,9 @@ class ChatFactory(protocol.Factory):
 
     def buildProtocol(self, addr):
         return ChatProtocol(self)
+
+    def getClientProtocol(self):
+        return ChatClientProtocol(self.private_key)
 
 class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
     def connectionMade(self):
@@ -178,29 +182,11 @@ class ChatClientProtocol(protocol.Protocol):
     def connectionLost(self, reason):
         print("Connection lost")
 
-
-class ChatFactory(protocol.Factory):
-    def __init__(self, server_ip, server_port, private_key):
-        self.clients = {}
-        self.server_ip = server_ip
-        self.server_port = server_port
-        self.private_key = private_key
-
-    def buildProtocol(self, addr):
-        return ChatProtocol(self)
-
-    def getClientProtocol(self):
-        return ChatClientProtocol(self.private_key)
-
-
 def main():
     server_ip = input("Enter server IP: ")  
     server_port = int(input("Enter the port number (Use 9000 for testing): "))  
 
-    password = get_password()
-    private_key, public_key = gen_keys(password)
-
-    factory = ChatFactory(server_ip, server_port, private_key)
+    factory = ChatFactory(server_ip, server_port)
     reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
 
@@ -210,4 +196,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
