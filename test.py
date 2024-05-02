@@ -111,7 +111,7 @@ class ChatProtocol(basic.LineReceiver):
         parts = line.split(" ")
         if len(parts) == 3:
             ip, port = parts[1], int(parts[2])
-            reactor.connectTCP(ip, port, self.factory.getClientProtocol())
+            reactor.connectTCP(ip, port, self.factory.getClientProtocol(self.private_key))
         else:
             self.sendLine("Invalid command usage. Use /connect <IP> <port>".encode('utf-8'))
 
@@ -119,16 +119,17 @@ class ChatProtocol(basic.LineReceiver):
         self.sendLine(f"Your public key is: {self.public_key}".encode('utf-8'))
 
 class ChatFactory(protocol.Factory):
-    def __init__(self, server_ip, server_port):
+    def __init__(self, server_ip, server_port, private_key):
         self.clients = {}
         self.server_ip = server_ip
         self.server_port = server_port
+        self.private_key = private_key
 
     def buildProtocol(self, addr):
         return ChatProtocol(self)
 
-    def getClientProtocol(self):
-        return ChatClientProtocol(self.private_key)
+    def getClientProtocol(self, private_key):
+        return ChatClientProtocol(private_key)
 
 class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
     def connectionMade(self):
@@ -183,14 +184,15 @@ class ChatClientProtocol(protocol.Protocol):
         print("Connection lost")
 
 def main():
-    server_ip = input("Enter server IP: ")  
-    server_port = int(input("Enter the port number (Use 9000 for testing): "))  
+    server_ip = input("Enter server IP: ")
+    server_port = int(input("Enter the port number (Use 9000 for testing): "))
 
-    factory = ChatFactory(server_ip, server_port)
+    private_key, _ = gen_keys(get_password())
+    factory = ChatFactory(server_ip, server_port, private_key)
     reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
 
-    stdio.StandardIO(ChatConsoleProtocol(factory))  
+    stdio.StandardIO(ChatConsoleProtocol(factory))
 
     reactor.run()
 
