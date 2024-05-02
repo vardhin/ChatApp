@@ -35,7 +35,7 @@ To deploy and run this project:
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT](https://github.com/vardhin/chatapp/blob/main/LICENSE.md)
 
 
 ## Feedback
