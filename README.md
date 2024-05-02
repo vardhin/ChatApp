@@ -42,5 +42,3 @@ To deploy and run this project:
 
 If you have any feedback, please reach out on GitHub. Open contribution and pull requests are welcome.🤓
 
-
-![Logo](https://i.ibb.co/28WV8RK/Screenshot-2024-05-02-at-11-46-17-PM.png)
