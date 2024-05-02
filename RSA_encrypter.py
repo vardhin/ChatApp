@@ -3,25 +3,28 @@ from Crypto.Cipher import PKCS1_OAEP
 import os
 
 def encrypt_message(public_key, message):
-    cipher = PKCS1_OAEP.new(public_key)
+    rsa_key = RSA.import_key(public_key)
+    cipher = PKCS1_OAEP.new(rsa_key)
     encrypted_message = cipher.encrypt(message.encode())
     return encrypted_message
 
 def decrypt_message(private_key, encrypted_message):
-    cipher = PKCS1_OAEP.new(private_key)
+    rsa_key = RSA.import_key(private_key)
+    cipher = PKCS1_OAEP.new(rsa_key)
     decrypted_message = cipher.decrypt(encrypted_message)
     return decrypted_message.decode()
 
 def gen_keys(seed):
     os.environ['PYTHONHASHSEED'] = seed
-    key = RSA.generate(1024)
-    return key.export_key(),key.publickey().export_key()
+    rsa_key = RSA.generate(1024)
+    private_key = rsa_key.export_key()
+    public_key = rsa_key.publickey().export_key()
+    return private_key, public_key
 
 def get_public_key(seed):
     os.environ['PYTHONHASHSEED'] = seed
-    key = RSA.generate(1024)
-    return key.publickey().export_key()
-
+    rsa_key = RSA.generate(1024)
+    return rsa_key.publickey().export_key()
 
 if __name__ == "__main__":
     print("Let's simulate the scenario where A gives their public key to B")
