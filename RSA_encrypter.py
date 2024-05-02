@@ -11,8 +11,13 @@ def encrypt_message(public_key, message):
 def decrypt_message(private_key, encrypted_message):
     rsa_key = RSA.import_key(private_key)
     cipher = PKCS1_OAEP.new(rsa_key)
-    decrypted_message = cipher.decrypt(encrypted_message)
-    return decrypted_message.decode()
+    try:
+        decrypted_message = cipher.decrypt(encrypted_message)
+        return decrypted_message.decode()
+    except ValueError as e:
+        print("Error decrypting message:", e)
+        return None
+
 
 def gen_keys(seed):
     os.environ['PYTHONHASHSEED'] = seed
