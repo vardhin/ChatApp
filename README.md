@@ -42,3 +42,7 @@ To deploy and run this project:
 
 If you have any feedback, please reach out on GitHub. Open contribution and pull requests are welcome.🤓
 
+## Authors
+
+- [@vardhin](https://www.github.com/vardhin)
+- [@rishimehta04](https://www.github.com/rishimehta04)
