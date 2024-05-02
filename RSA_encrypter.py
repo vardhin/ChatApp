@@ -33,13 +33,13 @@ if __name__ == "__main__":
 
     # Generating A's key pair with seed "A_seed"
     private_key_A, public_key_A = gen_keys("A_seed")
-    print(f"private key of A is = {private_key_A.export_key().decode()}")
-    print(f"public key of A is = {public_key_A.export_key().decode()}\n\n")
+    print(f"private key of A is = {private_key_A}")
+    print(f"public key of A is = {public_key_A}\n\n")
 
     # Generating B's key pair with seed "B_seed"
     private_key_B, public_key_B = gen_keys("B_seed")
-    print(f"private key of B is = {private_key_B.export_key().decode()}")
-    print(f"public key of B is = {public_key_B.export_key().decode()}\n\n")
+    print(f"private key of B is = {private_key_B}")
+    print(f"public key of B is = {public_key_B}\n\n")
 
     # Let's simulate B sending a message to A
     message_from_B = "Hey A, it's me B. How are you?"
