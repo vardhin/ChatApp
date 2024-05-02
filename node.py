@@ -1,14 +1,27 @@
 from twisted.internet import reactor, protocol, stdio
 from twisted.protocols import basic
+from RSA_encrypter import *
+import getpass
 
+def get_password():
+    # Get password from console without showing it
+    password = getpass.getpass("Enter your password: ")
+    return password
+
+seed = get_password()
+private_key,public_key = gen_keys(seed)
+print(f"public key is: {public_key}\n\n\n")
+print(f"private key is: {private_key}\n\n\n")
 class ChatProtocol(basic.LineReceiver):
     def __init__(self, factory):
         self.factory = factory
 
     def connectionMade(self):
+        global public_key
         peer = self.transport.getPeer()
         print(f"Client connected from {peer.host}:{peer.port}")
         print(f"Server running on {self.factory.server_ip}:{self.factory.server_port}")
+        print(f"your public key is: {public_key}")
         self.factory.clients[peer.host] = self
         self.sendLine(b"Welcome to the chat server!")
 
@@ -101,28 +114,39 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
             self.broadcastMessage(command)
         elif command.startswith("/connect"):
             super().connectToServer(command)
+        elif command.startswith("/publickey"):
+            self.show_public_key()
         else:
             print("Unknown command. Type '/help' to see the list of valid commands.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
 
+    def show_public_key():
+        global public_key
+        print(f"Your public key is: {public_key}")
+    
     def prepareMessage(self, command):
-        parts = command.split(" ", 2)
-        if len(parts) == 3:
-            dest_ip, message = parts[1:]
-            client = self.factory.clients.get(dest_ip)
+        parts = command.split(" ", 3)
+        if len(parts) == 4:
+            public_key_client = parts[1]
+            ip_client = parts[2]
+            message_client = parts[3]
+            client = self.factory.clients.get(ip_client)
             if client:
-                client.sendLine(message.encode('utf-8'))
+                message_client = encrypt_message(public_key_client,message_client)
+                client.sendLine(message_client.encode('utf-8'))
             else:
-                print(f"Client with IP {dest_ip} not found.")
+                print(f"Client with IP {ip_client} not found.")
         else:
-            print("Invalid command usage. Use /send <IP> <message>")
+            print("Invalid command usage. Use /send <public_key> <IP> <message>")
 
 class ChatClientProtocol(protocol.Protocol):
     def connectionMade(self):
         print("Connected to server")
 
     def dataReceived(self, data):
-        print(f"Received message: {data.decode('utf-8')}")
+        global private_key
+        recieved_message = decrypt_message(private_key,data.decode('utf-8'))
+        print(f"Received message: {recieved_message}")
 
     def connectionLost(self, reason):
         print("Connection lost")
