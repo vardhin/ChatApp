@@ -11,7 +11,6 @@ def get_password():
 seed = get_password()
 private_key,public_key = gen_keys(seed)
 print(f"public key is: {public_key}\n\n\n")
-print(f"private key is: {private_key}\n\n\n")
 class ChatProtocol(basic.LineReceiver):
     def __init__(self, factory):
         self.factory = factory
