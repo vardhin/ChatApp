@@ -164,30 +164,43 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
             print("Invalid command usage. Use /send <public_key> <IP> <message>")
 
 class ChatClientProtocol(protocol.Protocol):
+    def __init__(self, private_key):
+        self.private_key = private_key
+
     def connectionMade(self):
         print("Connected to server")
 
     def dataReceived(self, data):
-        global private_key
-        received_message = decrypt_message(private_key, data)
+        received_message = decrypt_message(self.private_key, data)
         if received_message:
             print(f"Received message: {received_message}")
 
     def connectionLost(self, reason):
         print("Connection lost")
 
-class ChatClientFactory(protocol.ClientFactory):
-    def buildProtocol(self, addr):
-        return ChatClientProtocol()
 
-    def clientConnectionFailed(self, connector, reason):
-        print("Connection failed")
+class ChatFactory(protocol.Factory):
+    def __init__(self, server_ip, server_port, private_key):
+        self.clients = {}
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.private_key = private_key
+
+    def buildProtocol(self, addr):
+        return ChatProtocol(self)
+
+    def getClientProtocol(self):
+        return ChatClientProtocol(self.private_key)
+
 
 def main():
     server_ip = input("Enter server IP: ")  
     server_port = int(input("Enter the port number (Use 9000 for testing): "))  
 
-    factory = ChatFactory(server_ip, server_port)
+    password = get_password()
+    private_key, public_key = gen_keys(password)
+
+    factory = ChatFactory(server_ip, server_port, private_key)
     reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
 
@@ -197,3 +210,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
