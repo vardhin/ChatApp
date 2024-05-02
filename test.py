@@ -168,9 +168,12 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
         else:
             print("Invalid command usage. Use /send <public_key> <IP> <message>")
 
-class ChatClientProtocol(protocol.Protocol):
+class ChatClientProtocol(protocol.ClientFactory):
     def __init__(self, private_key):
         self.private_key = private_key
+
+    def buildProtocol(self, addr):
+        return self
 
     def connectionMade(self):
         print("Connected to server")
@@ -187,8 +190,7 @@ def main():
     server_ip = input("Enter server IP: ")
     server_port = int(input("Enter the port number (Use 9000 for testing): "))
 
-    private_key, _ = gen_keys(get_password())
-    factory = ChatFactory(server_ip, server_port, private_key)
+    factory = ChatFactory(server_ip, server_port, get_password())
     reactor.listenTCP(server_port, factory)
     print(f"Chat server started on {server_ip}:{server_port}")
 
