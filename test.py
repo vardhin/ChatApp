@@ -1,8 +1,8 @@
 from twisted.internet import reactor, protocol, stdio
 from twisted.protocols import basic
 import getpass
-from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
 import os
 
 def encrypt_message(public_key, message):
@@ -21,7 +21,6 @@ def decrypt_message(private_key, encrypted_message):
         print("Error decrypting message:", e)
         return None
 
-
 def gen_keys(seed):
     os.environ['PYTHONHASHSEED'] = seed
     rsa_key = RSA.generate(2048)
@@ -29,20 +28,31 @@ def gen_keys(seed):
     public_key = rsa_key.publickey().export_key().decode('utf-8')
     return private_key, public_key
 
-def get_public_key(seed):
-    os.environ['PYTHONHASHSEED'] = seed
-    rsa_key = RSA.generate(2048)
-    return rsa_key.publickey().export_key().decode('utf-8')
-
 def get_password():
     # Get password from console without showing it
     password = getpass.getpass("Enter your password: ")
     return password
 
+# Generate keys using a password
 seed = get_password()
-private_key,public_key = gen_keys(seed)
+private_key, public_key = gen_keys(seed)
+print(f"Public key: {public_key}\n\n\n")
+
+"""
+# Test encryption and decryption
+message = "Hello, world!"
+encrypted_message = encrypt_message(public_key, message)
+print("Encrypted message:", encrypted_message)
+
+decrypted_message = decrypt_message(private_key, encrypted_message)
+if decrypted_message:
+    print("Decrypted message:", decrypted_message)
+else:
+    print("Failed to decrypt the message.")
 print(f"public key is: {public_key}\n\n\n")
 print(f"private key: {private_key}")
+"""
+
 class ChatProtocol(basic.LineReceiver):
     def __init__(self, factory):
         self.factory = factory
