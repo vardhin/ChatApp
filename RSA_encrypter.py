@@ -16,14 +16,14 @@ def decrypt_message(private_key, encrypted_message):
 
 def gen_keys(seed):
     os.environ['PYTHONHASHSEED'] = seed
-    rsa_key = RSA.generate(1024)
+    rsa_key = RSA.generate(2048)
     private_key = rsa_key.export_key().decode('utf-8')
     public_key = rsa_key.publickey().export_key().decode('utf-8')
     return private_key, public_key
 
 def get_public_key(seed):
     os.environ['PYTHONHASHSEED'] = seed
-    rsa_key = RSA.generate(1024)
+    rsa_key = RSA.generate(2048)
     return rsa_key.publickey().export_key().decode('utf-8')
 
 if __name__ == "__main__":
