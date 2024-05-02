@@ -17,7 +17,7 @@ Install dependencies using pip:
 
 ```bash
   pip install twisted
-  pip install pycryptodom
+  pip install pycryptodome
   pip install cryptography
 ```
 
