@@ -28,6 +28,11 @@ def gen_keys(seed):
     public_key = rsa_key.publickey().export_key().decode('utf-8')
     return private_key, public_key
 
+def get_public_key(seed):
+    os.environ['PYTHONHASHSEED'] = seed
+    rsa_key = RSA.generate(2048)
+    return rsa_key.publickey().export_key().decode('utf-8')
+
 def get_password():
     password = getpass.getpass("Enter your password: ")
     return password
@@ -148,7 +153,7 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
         elif command.startswith("/connect"):
             super().connectToServer(command)
         elif command.startswith("/publickey"):
-            self.showPublicKey()
+            super().showPublicKey()
         else:
             print("Unknown command. Type '/help' to see the list of valid commands.")
         self.transport.write(b">>> ")  # Write prompt symbol again after handling command
@@ -156,24 +161,26 @@ class ChatConsoleProtocol(ChatProtocol, protocol.Protocol):
     def prepareMessage(self, command):
         parts = command.split(" ", 3)
         if len(parts) == 4:
-            public_key_client = parts[1]
-            ip_client = parts[2]
-            message_client = parts[3]
+            public_key_client, ip_client, message_client = parts[1:]
             client = self.factory.clients.get(ip_client)
             if client:
-                message_client = encrypt_message(public_key_client, message_client)
-                client.sendLine(message_client)
+                encrypted_message = encrypt_message(public_key_client, message_client)
+                client.sendLine(encrypted_message)
             else:
                 print(f"Client with IP {ip_client} not found.")
         else:
             print("Invalid command usage. Use /send <public_key> <IP> <message>")
 
-class ChatClientProtocol(protocol.ClientFactory):
+class ChatClientFactory(protocol.ClientFactory):
+    def buildProtocol(self, addr):
+        return ChatClientProtocol(self.private_key)
+
+    def clientConnectionFailed(self, connector, reason):
+        print("Connection failed")
+
+class ChatClientProtocol(protocol.Protocol):
     def __init__(self, private_key):
         self.private_key = private_key
-
-    def buildProtocol(self, addr):
-        return self
 
     def connectionMade(self):
         print("Connected to server")
