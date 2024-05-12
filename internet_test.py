@@ -15,13 +15,17 @@ class MessageClientFactory(ClientFactory):
         print("Connection failed:", reason.getErrorMessage())
         reactor.stop()
 
+class MessageServerFactory(Factory):
+    def buildProtocol(self, addr):
+        return MessageReceiver()
+
 def send_message_to_friend(friend_ip):
     endpoint = TCP4ClientEndpoint(reactor, friend_ip, 1080)  # Change 1080 to the SOCKS proxy port
     d = endpoint.connect(MessageClientFactory())
 
 def start_server():
     endpoint = TCP4ServerEndpoint(reactor, 12345)  # Change 12345 to the desired server port
-    endpoint.listen(MessageReceiver())
+    endpoint.listen(MessageServerFactory())
 
 def main():
     try:
