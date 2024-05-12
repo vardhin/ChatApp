@@ -1,26 +1,28 @@
 from twisted.internet import reactor
-from txsocksx.client import SOCKS5ClientEndpoint
-from txsocksx.client import SOCKS5ClientFactory
-from txsocksx.client import SOCKS4ClientFactory
 from twisted.internet.protocol import Protocol
-from twisted.internet.endpoints import TCP4ServerEndpoint, connectProtocol
+from twisted.internet.endpoints import TCP4ClientEndpoint, TCP4ServerEndpoint
+from twisted.internet import error
 
 class MessageReceiver(Protocol):
     def dataReceived(self, data):
         print("Received message:", data.decode('utf-8'))
 
 def send_message_to_friend(friend_ip):
-    endpoint = SOCKS5ClientEndpoint(friend_ip, 1080)  # Change 1080 to the SOCKS proxy port
+    def connected(protocol):
+        protocol.transport.write(b"Hello, friend!")
+    
+    def failed(reason):
+        print("Connection failed:", reason.getErrorMessage())
+        reactor.stop()
+    
+    endpoint = TCP4ClientEndpoint(reactor, friend_ip, 1080)  # Change 1080 to the SOCKS proxy port
     d = endpoint.connect(MessageReceiver())
-    d.addErrback(handle_failure)
+    d.addCallback(connected)
+    d.addErrback(failed)
 
 def start_server():
     endpoint = TCP4ServerEndpoint(reactor, 12345)  # Change 12345 to the desired server port
-    endpoint.listen(SOCKS4ClientFactory(MessageReceiver))
-
-def handle_failure(reason):
-    print("Connection failed:", reason.getErrorMessage())
-    reactor.stop()
+    endpoint.listen(MessageReceiver())
 
 # Replace 'friend_ip' with your friend's actual IP address
 friend_ip = 'your_friend_ip_here'
@@ -32,5 +34,7 @@ try:
     else:
         send_message_to_friend(friend_ip)
     reactor.run()
+except error.CannotListenError:
+    print("Port is already in use.")
 except Exception as e:
     print("An error occurred:", e)
